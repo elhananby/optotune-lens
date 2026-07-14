@@ -20,18 +20,17 @@ A robust, modern Python SDK for interacting with **Optotune electrically tunable
 
 ### Prerequisites
 - Python >= 3.8
-- `pyserial` >= 3.5
+- [`uv`](https://docs.astral.sh/uv/)
 
-### Installing in Editable Mode (for development)
-From the root of the project:
+### Setting Up a Development Environment
+From the root of the project, create the virtual environment and install the
+package with its dev dependencies (`pytest`, etc.) from `uv.lock`:
 ```bash
-pip install -e .
+uv sync --extra dev
 ```
 
-To install with development packages (like `pytest`):
-```bash
-pip install -e ".[dev]"
-```
+Run any command inside that environment with `uv run`, e.g. `uv run pytest`
+or `uv run python example.py`.
 
 ---
 
@@ -108,9 +107,8 @@ Helper method to dump and pretty-print the EEPROM in a 16x16 hex grid.
 Unit tests are written with `pytest` and use a mock serial implementation.
 
 ### Running Tests
-To run tests, make sure dev dependencies are installed and run:
 ```bash
-pytest
+uv run pytest
 ```
 
 ---
