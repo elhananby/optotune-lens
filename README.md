@@ -75,8 +75,8 @@ with Lens(port='COM7') as lens:
 
 ### Class: `Lens`
 
-#### `__init__(port: str, debug: bool = False)`
-Initializes the serial connection at 115200 baud, performs the handshake, and loads device metadata (Max Current, Serial, Firmware). If `debug=True`, sets the logger level to `DEBUG` and routes output to stdout.
+#### `__init__(port: str, debug: bool = False, temp_limits: Tuple[float, float] = (20.0, 40.0))`
+Initializes the serial connection at 115200 baud, performs the handshake, and loads device metadata (Max Current, Serial, Firmware). Note that connecting **writes `temp_limits` to the device** — the hardware only reports its focal power range in response to a temperature-limit command — so pass your own `(lower, upper)` limits if the 20–40 °C defaults are not appropriate. If `debug=True`, sets the logger level to `DEBUG` and routes output to stdout.
 
 #### `to_focal_power_mode() -> Tuple[float, float]`
 Switches the lens to Focal Power mode (Mode 5) and updates/returns the diopter physical range `(min_diopter, max_diopter)`.

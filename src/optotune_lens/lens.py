@@ -44,13 +44,21 @@ class Lens:
     mode/parameter configuration.
     """
 
-    def __init__(self, port: str, debug: bool = False) -> None:
+    def __init__(self, port: str, debug: bool = False,
+                 temp_limits: Tuple[float, float] = (20.0, 40.0)) -> None:
         """Initialize the serial connection and query hardware status.
-        
+
+        Note that connecting writes `temp_limits` to the device: the hardware
+        only reports its focal power range in response to a temperature-limit
+        command, so one is always sent during initialization. Pass your own
+        limits here if the defaults are not appropriate.
+
         Args:
             port: Serial port name (e.g. 'COM7', '/dev/ttyUSB0').
             debug: If True, log detailed TX/RX hex dumps to stdout.
-            
+            temp_limits: (lower, upper) temperature limits in Celsius that are
+                written to the device on connect (default (20.0, 40.0)).
+
         Raises:
             LensError: If the serial connection, handshake, or any of the
                 initial hardware queries fail. Low-level errors (e.g. a
@@ -92,8 +100,8 @@ class Lens:
             self.device_id: str = self.get_device_id()
             self.max_output_current = self.get_max_output_current()
             
-            # Set default temperature limits and fetch initial diopter bounds
-            self.set_temperature_limits(20.0, 40.0)
+            # Write the requested temperature limits and fetch initial diopter bounds
+            self.set_temperature_limits(*temp_limits)
 
             self.mode: Optional[OperatingMode] = None
             self.refresh_active_mode()

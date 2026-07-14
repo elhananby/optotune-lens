@@ -166,6 +166,17 @@ def test_lens_init_and_properties():
         assert lens.mode == OperatingMode.CURRENT
 
 
+@patch("serial.Serial", new=MockSerial)
+def test_lens_init_custom_temp_limits():
+    """Test that custom temp_limits are written to the device on connect."""
+    with Lens("COM_MOCK", temp_limits=(20.0, 45.0)) as lens:
+        expected = b"PwTA" + struct.pack(">hh", 45 * 16, 20 * 16)
+        assert expected in lens.connection.write_buffer
+        # Diopter bounds were populated from the device's response.
+        assert lens.min_diopter == pytest.approx(-3.0)
+        assert lens.max_diopter == pytest.approx(2.44)
+
+
 @patch("serial.Serial")
 def test_lens_handshake_fails(mock_serial):
     """Test that connection fails if handshake does not match."""
