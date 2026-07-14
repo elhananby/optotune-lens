@@ -116,7 +116,10 @@ identically regardless of which of the three board types is connected — the un
 > **Hardware note**: as of this writing, only the Lens Driver 4 (`/dev/optotune_ld`) is physically
 > available for testing. `IccLens`'s test suite (`tests/test_icc.py`) uses a fake board object and
 > passes, but the real hardware code path (`IccLens.connect(...)`) has not been verified against
-> actual ICC-1C/ICC-4C/ECC-1C hardware.
+> actual ICC-1C/ICC-4C/ECC-1C hardware. In particular, the analog-input LUT type code for focal
+> power (`1`, taken from the SDK's `SetLUTtype` documentation; the ICC-1C manual does not list
+> register codes) should be double-checked the first time `configure_analog_input` is used with
+> `unit='focal_power'` on a real controller.
 
 ```python
 from optotune_lens import IccLens

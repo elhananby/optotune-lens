@@ -218,7 +218,8 @@ def test_configure_analog_input(lens):
     channel = lens.channels[0]
     channel.configure_analog_input(voltage_range=[0, 10], value_range=[-2, 3], unit='focal_power')
     analog = channel._ch.Analog
-    assert analog.lut_type == 3
+    # 1 = focal power per the SDK's SetLUTtype docstring (0 = current)
+    assert analog.lut_type == 1
     assert analog.voltages == [0, 10]
     assert analog.values == [-2, 3]
     assert analog.input_selected

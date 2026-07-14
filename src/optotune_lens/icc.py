@@ -119,7 +119,11 @@ class IccChannel:
         unit : 'current' or 'focal_power'
             Which quantity `value_range` is expressed in.
         """
-        lut_types = {'current': 0, 'focal_power': 3}
+        # LUT type codes come from the SDK's Analog.SetLUTtype docstring
+        # ("0 = current, 1 = focal power" in optoKummenberg/registers/InputStage.py).
+        # Note this is a different code space from UnitType (where FP == 3), and it has
+        # not yet been verified on real hardware -- see the README hardware note.
+        lut_types = {'current': 0, 'focal_power': 1}
         if unit not in lut_types:
             raise LensValidationError(f"Unknown analog input unit {unit!r}; expected 'current' or 'focal_power'")
         analog = self._ch.Analog
