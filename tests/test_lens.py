@@ -221,6 +221,17 @@ def test_lens_current_validation():
             lens.set_current(-300.0)
 
 
+@patch("serial.Serial", new=MockSerial)
+def test_lens_temperature_limits_validation():
+    """Test that setting temperature limits outside the supported range raises validation error."""
+    with Lens("COM_MOCK") as lens:
+        with pytest.raises(LensValidationError):
+            lens.set_temperature_limits(20.0, 3000.0)
+
+        with pytest.raises(LensValidationError):
+            lens.set_temperature_limits(-3000.0, 40.0)
+
+
 @patch("serial.Serial")
 def test_lens_serial_timeout(mock_serial):
     """Test behavior on serial read timeout."""

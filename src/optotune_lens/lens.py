@@ -288,7 +288,15 @@ class Lens:
             
         Returns:
             A tuple of (error, min_diopter, max_diopter).
+
+        Raises:
+            LensValidationError: If lower or upper is outside [-40.0, 85.0] °C.
         """
+        if not (-40.0 <= lower <= 85.0):
+            raise LensValidationError(f"Lower temperature limit {lower} is out of bounds [-40.0, 85.0]")
+        if not (-40.0 <= upper <= 85.0):
+            raise LensValidationError(f"Upper temperature limit {upper} is out of bounds [-40.0, 85.0]")
+
         res = self.send_command(
             b'PwTA' + struct.pack('>hh', int(upper * 16), int(lower * 16)), 
             '>xxBhh'
