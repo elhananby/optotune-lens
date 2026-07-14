@@ -69,6 +69,10 @@ class MockSerial:
             b"PwDA" + struct.pack(">h", 1600) + b"\x00\x00": None,  # type 'A': (3.0 + 5) * 200 = 1600
         }
 
+    @property
+    def in_waiting(self):
+        return len(self.read_buffer)
+
     def reset_input_buffer(self):
         pass
 
@@ -263,3 +267,18 @@ def test_lens_crc_error_handling():
         
         with pytest.raises(LensCRCError):
             lens.get_firmware_type()
+
+
+@patch("serial.Serial", new=MockSerial)
+def test_lens_drains_stray_bytes_before_next_command():
+    """Test that stray bytes left in the input buffer (e.g. an unsolicited
+    error reply to a silent-write command like set_current) don't desync
+    the next command's response parsing."""
+    with Lens("COM_MOCK") as lens:
+        # Simulate an "N\r\n" error reply that the driver sent in response
+        # to a corrupted set_current command but that nobody read.
+        lens.connection.read_buffer += b"N\r\n"
+
+        # The next command should still parse correctly instead of
+        # misinterpreting the stray bytes as part of its own response.
+        assert lens.get_temperature() == 25.5

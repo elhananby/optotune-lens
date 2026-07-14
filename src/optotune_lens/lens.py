@@ -144,6 +144,14 @@ class Lens:
             tx_hex = ' '.join(f'{c:02x}' for c in command_with_crc)
             logger.debug("TX: %-50s | %r", tx_hex, command_with_crc)
 
+        # Some commands (e.g. set_current, set_diopter) get no reply on
+        # success but an unsolicited error reply on a bad CRC, which is
+        # never read. Drain any such stray bytes now so they can't be
+        # misread as part of this command's response.
+        if self.connection.in_waiting:
+            stray = self.connection.read(self.connection.in_waiting)
+            logger.warning("Discarding %d stray byte(s) before sending command: %r", len(stray), stray)
+
         try:
             self.connection.write(command_with_crc)
         except serial.SerialException as e:
