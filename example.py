@@ -32,8 +32,8 @@ def main():
             min_fp, max_fp = lens.to_focal_power_mode()
             print(f"Focal Power Limits: {min_fp} to {max_fp} diopters")
             
-            error, min_fp, max_fp = lens.set_temperature_limits(20.0, 45.0)
-            print(f"Updated safety temp limits (20-45C). Error status: {error}")
+            min_fp, max_fp = lens.set_temperature_limits(20.0, 45.0)
+            print(f"Updated safety temp limits (20-45C).")
             print(f"New Focal Power Limits: {min_fp} to {max_fp} diopters")
             
             # Setting diopter values

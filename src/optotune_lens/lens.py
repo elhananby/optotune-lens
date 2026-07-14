@@ -240,25 +240,27 @@ class Lens:
             raise LensCommandError("No response received for lens serial number query")
         return res[0].decode('ascii').rstrip('\x00').strip()
 
-    def eeprom_write_byte(self, address: int, byte: int) -> int:
+    def eeprom_write_byte(self, address: int, byte: int) -> None:
         """Write a single byte to EEPROM address.
-        
+
         Args:
             address: Address index (0 to 255).
             byte: Byte value to write (0 to 255).
-            
-        Returns:
-            The error code returned by the device.
+
+        Raises:
+            LensValidationError: If address or byte is outside [0, 255].
+            LensCommandError: If the device reports a nonzero error code.
         """
         if not (0 <= address <= 255):
             raise LensValidationError(f"EEPROM address {address} is out of bounds [0, 255]")
         if not (0 <= byte <= 255):
             raise LensValidationError(f"EEPROM byte value {byte} is out of bounds [0, 255]")
-            
+
         res = self.send_command(b'Zw' + struct.pack('BB', address, byte), '>xB')
         if res is None:
             raise LensCommandError("No response received for EEPROM write")
-        return res[0]
+        if res[0] != 0:
+            raise LensCommandError(f"EEPROM write failed with device error code {res[0]}")
 
     def eeprom_dump(self) -> List[int]:
         """Read all 256 bytes from EEPROM.
@@ -292,18 +294,19 @@ class Lens:
             raise LensCommandError("No response received for temperature query")
         return res[0] * 0.0625
 
-    def set_temperature_limits(self, lower: float, upper: float) -> Tuple[int, float, float]:
-        """Set temperature limits and return limits in diopters.
-        
+    def set_temperature_limits(self, lower: float, upper: float) -> Tuple[float, float]:
+        """Set temperature limits and return the resulting focal power range.
+
         Args:
             lower: Lower temperature limit in Celsius.
             upper: Upper temperature limit in Celsius.
-            
+
         Returns:
-            A tuple of (error, min_diopter, max_diopter).
+            A tuple of (min_diopter, max_diopter) achievable within those limits.
 
         Raises:
             LensValidationError: If lower or upper is outside [-40.0, 85.0] °C.
+            LensCommandError: If the device reports a nonzero error code.
         """
         if not (-40.0 <= lower <= 85.0):
             raise LensValidationError(f"Lower temperature limit {lower} is out of bounds [-40.0, 85.0]")
@@ -318,10 +321,12 @@ class Lens:
             raise LensCommandError("No response received for temperature limits change")
             
         error, max_fp, min_fp = res
+        if error != 0:
+            raise LensCommandError(f"Setting temperature limits failed with device error code {error}")
         self.min_diopter = self._raw_to_diopter(min_fp)
         self.max_diopter = self._raw_to_diopter(max_fp)
 
-        return error, self.min_diopter, self.max_diopter
+        return self.min_diopter, self.max_diopter
 
     def _raw_to_diopter(self, raw: int) -> float:
         """Convert a raw firmware focal power value to diopters."""
@@ -388,18 +393,21 @@ class Lens:
 
     def to_focal_power_mode(self) -> Tuple[float, float]:
         """Switch device to focal power mode (Mode 5).
-        
+
         Returns:
             A tuple of (min_diopter, max_diopter).
+
+        Raises:
+            LensCommandError: If the device reports a nonzero error code.
         """
         res = self.send_command('MwCA', '>xxxBhh')
         if res is None:
             raise LensCommandError("No response received when switching to focal power mode")
-            
+
         error, max_fp_raw, min_fp_raw = res
         if error != 0:
-            logger.warning("Switching to focal power mode returned error code: %d", error)
-            
+            raise LensCommandError(f"Switching to focal power mode failed with device error code {error}")
+
         min_fp = self._raw_to_diopter(min_fp_raw)
         max_fp = self._raw_to_diopter(max_fp_raw)
 

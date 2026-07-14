@@ -3,8 +3,8 @@
 ## Phase 1: Hardware-correctness fixes
 - [x] Task 1: Resolve analog-LUT focal-power type code in `IccChannel.configure_analog_input`
       (manual + web search had no register codes; used 1 per SDK SetLUTtype docstring, flagged in README)
-- [ ] Task 2: Raise `LensCommandError` on nonzero device error codes (breaking API change)
-- [ ] Checkpoint 1: full test suite green, one commit per task
+- [x] Task 2: Raise `LensCommandError` on nonzero device error codes (breaking API change)
+- [x] Checkpoint 1: full test suite green (34 passed), one commit per task
 
 ## Phase 2: API safety and numeric polish
 - [ ] Task 3: `temp_limits` constructor parameter for `Lens.__init__`

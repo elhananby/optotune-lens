@@ -300,7 +300,7 @@ def test_lens_get_firmware_branch():
 def test_lens_eeprom_write_and_dump():
     """Test writing a byte to EEPROM and reading it back via a full dump."""
     with Lens("COM_MOCK") as lens:
-        assert lens.eeprom_write_byte(5, 42) == 0
+        lens.eeprom_write_byte(5, 42)
 
         dump = lens.eeprom_dump()
         assert len(dump) == 256
@@ -336,6 +336,46 @@ def test_lens_eeprom_print(capsys):
         captured = capsys.readouterr()
         assert "ab" in captured.out
         assert lens.lens_serial in captured.out
+
+
+@patch("serial.Serial", new=MockSerial)
+def test_lens_set_temperature_limits_device_error_raises():
+    """Test that a nonzero device error code from PwTA raises LensCommandError."""
+    with Lens("COM_MOCK") as lens:
+        # Register a response with error code 1 for a new pair of limits.
+        lens.connection.responses[b"PwTA" + struct.pack(">hh", 50 * 16, 25 * 16)] = (
+            b"\x00\x00\x01" + struct.pack(">hh", 0, 0)
+        )
+
+        with pytest.raises(LensCommandError) as exc_info:
+            lens.set_temperature_limits(25.0, 50.0)
+        assert "error code 1" in str(exc_info.value)
+
+
+@patch("serial.Serial", new=MockSerial)
+def test_lens_to_focal_power_mode_device_error_raises():
+    """Test that a nonzero device error code from MwCA raises LensCommandError."""
+    with Lens("COM_MOCK") as lens:
+        lens.connection.responses[b"MwCA"] = b"\x00\x00\x00\x02" + struct.pack(">hh", 1000, -200)
+
+        with pytest.raises(LensCommandError) as exc_info:
+            lens.to_focal_power_mode()
+        assert "error code 2" in str(exc_info.value)
+
+
+@patch("serial.Serial", new=MockSerial)
+def test_lens_eeprom_write_device_error_raises():
+    """Test that a nonzero device error code on EEPROM write raises LensCommandError."""
+    with Lens("COM_MOCK") as lens:
+        def error_read(size):
+            payload = b"\x00\x03"  # error code 3
+            return payload + struct.pack('<H', crc_16(payload)) + b"\r\n"
+
+        lens.connection.read = error_read
+
+        with pytest.raises(LensCommandError) as exc_info:
+            lens.eeprom_write_byte(0, 1)
+        assert "error code 3" in str(exc_info.value)
 
 
 @patch("serial.Serial", new=MockSerial)

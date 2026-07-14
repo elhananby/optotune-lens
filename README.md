@@ -93,8 +93,9 @@ Sets the target current in mA. Validates against the device's maximum output cur
 #### `get_temperature() -> float`
 Reads the internal temperature sensor (resolution 0.0625 °C).
 
-#### `set_temperature_limits(lower: float, upper: float) -> Tuple[int, float, float]`
-Configures safety temperature limits. Returns new focal power limits at those temperatures.
+#### `set_temperature_limits(lower: float, upper: float) -> Tuple[float, float]`
+Configures safety temperature limits. Returns the new `(min_diopter, max_diopter)` focal power
+limits at those temperatures. Raises `LensCommandError` if the device reports an error.
 
 #### `eeprom_dump() -> List[int]`
 Dumps the complete 256-byte internal EEPROM contents.
