@@ -68,6 +68,10 @@ class MockSerial:
             b"MwDA": b"\x00\x00\x00",
             # Aw...: Set current
             b"Aw" + struct.pack(">h", 1412): None,  # (100.0 mA -> raw 1412)
+            # Ar: Read current (raw 2048 -> 2048 * 290.0 / 4095 mA)
+            b"Ar\x00\x00": b"\x00" + struct.pack(">h", 2048),
+            # PrDA...: Read diopter (raw 1600 -> type 'A': 1600/200 - 5 = 3.0)
+            b"PrDA\x00\x00\x00\x00": b"\x00\x00" + struct.pack(">h", 1600),
             # PwDA...: Set diopter (3.0 -> raw 600 if type 'A' otherwise raw 600)
             b"PwDA" + struct.pack(">h", 1600) + b"\x00\x00": None,  # type 'A': (3.0 + 5) * 200 = 1600
         }
@@ -126,11 +130,8 @@ class MockSerial:
 
         if resp_payload is not None:
             # Format of reply: payload + CRC-16(payload) + \r\n
-            if b"\r\n" in resp_payload and payload == b"Start":
-                self.read_buffer += resp_payload
-            else:
-                crc_val = crc_16(resp_payload)
-                self.read_buffer += resp_payload + struct.pack('<H', crc_val) + b"\r\n"
+            crc_val = crc_16(resp_payload)
+            self.read_buffer += resp_payload + struct.pack('<H', crc_val) + b"\r\n"
         return len(data)
 
     def read(self, size):
@@ -298,6 +299,20 @@ def test_lens_drains_stray_bytes_before_next_command():
         # The next command should still parse correctly instead of
         # misinterpreting the stray bytes as part of its own response.
         assert lens.get_temperature() == 25.5
+
+
+@patch("serial.Serial", new=MockSerial)
+def test_lens_get_current():
+    """Test current readout scaling: raw * max_output_current / 4095."""
+    with Lens("COM_MOCK") as lens:
+        assert lens.get_current() == pytest.approx(2048 * 290.0 / 4095.0)
+
+
+@patch("serial.Serial", new=MockSerial)
+def test_lens_get_diopter():
+    """Test diopter readout scaling for firmware type 'A': raw / 200 - 5."""
+    with Lens("COM_MOCK") as lens:
+        assert lens.get_diopter() == pytest.approx(3.0)
 
 
 @patch("serial.Serial", new=MockSerial)
