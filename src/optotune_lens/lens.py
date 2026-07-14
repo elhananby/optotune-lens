@@ -313,14 +313,18 @@ class Lens:
             raise LensCommandError("No response received for temperature limits change")
             
         error, max_fp, min_fp = res
-        if self.firmware_type == 'A':
-            self.min_diopter = min_fp / 200.0 - 5
-            self.max_diopter = max_fp / 200.0 - 5
-        else:
-            self.min_diopter = min_fp / 200.0
-            self.max_diopter = max_fp / 200.0
-            
+        self.min_diopter = self._raw_to_diopter(min_fp)
+        self.max_diopter = self._raw_to_diopter(max_fp)
+
         return error, self.min_diopter, self.max_diopter
+
+    def _raw_to_diopter(self, raw: int) -> float:
+        """Convert a raw firmware focal power value to diopters."""
+        return raw / 200.0 - 5 if self.firmware_type == 'A' else raw / 200.0
+
+    def _diopter_to_raw(self, diopter: float) -> int:
+        """Convert a diopter value to the raw firmware focal power encoding."""
+        return int((diopter + 5) * 200.0 if self.firmware_type == 'A' else diopter * 200.0)
 
     def get_current(self) -> float:
         """Read current applied current in mA."""
@@ -354,8 +358,7 @@ class Lens:
         res = self.send_command(b'PrDA\x00\x00\x00\x00', '>xxh')
         if res is None:
             raise LensCommandError("No response received for diopter read")
-        raw_diopter = res[0]
-        return raw_diopter / 200.0 - 5 if self.firmware_type == 'A' else raw_diopter / 200.0
+        return self._raw_to_diopter(res[0])
 
     def set_diopter(self, diopter: float) -> None:
         """Set focal power in diopters.
@@ -375,7 +378,7 @@ class Lens:
                     f"Diopter {diopter} is out of valid range [{self.min_diopter}, {self.max_diopter}]"
                 )
                 
-        raw_diopter = int((diopter + 5) * 200.0 if self.firmware_type == 'A' else diopter * 200.0)
+        raw_diopter = self._diopter_to_raw(diopter)
         self.send_command(b'PwDA' + struct.pack('>h', raw_diopter) + b'\x00\x00')
 
     def to_focal_power_mode(self) -> Tuple[float, float]:
@@ -392,11 +395,8 @@ class Lens:
         if error != 0:
             logger.warning("Switching to focal power mode returned error code: %d", error)
             
-        min_fp = min_fp_raw / 200.0
-        max_fp = max_fp_raw / 200.0
-        if self.firmware_type == 'A':
-            min_fp -= 5.0
-            max_fp -= 5.0
+        min_fp = self._raw_to_diopter(min_fp_raw)
+        max_fp = self._raw_to_diopter(max_fp_raw)
 
         self.refresh_active_mode()
         self.min_diopter = min_fp
