@@ -37,6 +37,7 @@ class MockSerial:
         self.write_buffer = b""
         self.read_buffer = b""
         self.current_mode = 1  # 1 = CURRENT, 5 = FOCAL_POWER
+        self.eeprom = bytearray(256)
 
         # Mock responses registry
         # Maps raw command bytes (excluding CRC) to the expected raw response data (excluding CRC/CRLF)
@@ -45,6 +46,8 @@ class MockSerial:
             b"Start": b"Ready\r\n",
             # H: Firmware type
             b"H": b"\x00A",
+            # F: Firmware branch
+            b"F": b"\x00\x07",
             # V\x00: Firmware version
             b"V\x00": b"\x00\x02\x05\x00\x0a\x00\x1f",
             # IR...: Device ID
@@ -111,6 +114,11 @@ class MockSerial:
         # Find mock response
         if payload == b"MMA":
             resp_payload = struct.pack(">xxxB", self.current_mode)
+        elif len(payload) == 3 and payload[:2] == b"Zr":
+            resp_payload = struct.pack(">xB", self.eeprom[payload[2]])
+        elif len(payload) == 4 and payload[:2] == b"Zw":
+            self.eeprom[payload[2]] = payload[3]
+            resp_payload = struct.pack(">xB", 0)
         elif payload in self.responses:
             resp_payload = self.responses[payload]
         else:
@@ -282,3 +290,68 @@ def test_lens_drains_stray_bytes_before_next_command():
         # The next command should still parse correctly instead of
         # misinterpreting the stray bytes as part of its own response.
         assert lens.get_temperature() == 25.5
+
+
+@patch("serial.Serial", new=MockSerial)
+def test_lens_get_firmware_branch():
+    """Test firmware branch ID query."""
+    with Lens("COM_MOCK") as lens:
+        assert lens.get_firmware_branch() == 7
+
+
+@patch("serial.Serial", new=MockSerial)
+def test_lens_eeprom_write_and_dump():
+    """Test writing a byte to EEPROM and reading it back via a full dump."""
+    with Lens("COM_MOCK") as lens:
+        assert lens.eeprom_write_byte(5, 42) == 0
+
+        dump = lens.eeprom_dump()
+        assert len(dump) == 256
+        assert dump[5] == 42
+        assert dump[0] == 0  # untouched addresses default to 0
+
+
+@patch("serial.Serial", new=MockSerial)
+def test_lens_eeprom_write_byte_validates_address_and_value():
+    """Test that eeprom_write_byte rejects out-of-bounds address/byte values."""
+    with Lens("COM_MOCK") as lens:
+        with pytest.raises(LensValidationError):
+            lens.eeprom_write_byte(-1, 0)
+
+        with pytest.raises(LensValidationError):
+            lens.eeprom_write_byte(256, 0)
+
+        with pytest.raises(LensValidationError):
+            lens.eeprom_write_byte(0, -1)
+
+        with pytest.raises(LensValidationError):
+            lens.eeprom_write_byte(0, 256)
+
+
+@patch("serial.Serial", new=MockSerial)
+def test_lens_eeprom_print(capsys):
+    """Test that eeprom_print renders the EEPROM as a 16x16 hex grid."""
+    with Lens("COM_MOCK") as lens:
+        lens.eeprom_write_byte(0, 0xAB)
+
+        lens.eeprom_print()
+
+        captured = capsys.readouterr()
+        assert "ab" in captured.out
+        assert lens.lens_serial in captured.out
+
+
+@patch("serial.Serial", new=MockSerial)
+def test_lens_malformed_terminator_handling():
+    """Test that a response not ending in CRLF raises LensCommandError."""
+    with Lens("COM_MOCK") as lens:
+        def bad_terminator_read(size):
+            # Valid payload and CRC, but the trailing bytes aren't \r\n.
+            payload = b"\x00A"
+            crc = crc_16(payload)
+            return payload + struct.pack('<H', crc) + b"XX"
+
+        lens.connection.read = bad_terminator_read
+
+        with pytest.raises(LensCommandError):
+            lens.get_firmware_type()
