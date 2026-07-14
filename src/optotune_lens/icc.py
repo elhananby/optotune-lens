@@ -45,7 +45,12 @@ class IccChannel:
             raise LensValidationError(f"Value {value} is out of valid range [{lo}, {hi}]")
 
     def set_current(self, current: float) -> None:
-        """Set static output current in amperes."""
+        """Set static output current in amperes.
+
+        Note: this validates against the generic firmware-level range for this register
+        (+/-2 A), not the limits of the attached board or lens (e.g. the ICC-1C hardware
+        tops out at +/-500 mA per its datasheet).
+        """
         self._validate_range(self._ch.StaticInput.current, current)
         self._ch.StaticInput.SetAsInput()
         self._ch.StaticInput.SetCurrent(current)
@@ -156,6 +161,10 @@ class IccLens:
     def connect(cls, controller: Union[IccControllerType, str], port: Optional[str] = None,
                 ip_address: Optional[str] = None, verbose: bool = False) -> 'IccLens':
         """Open a real connection to an ICC-4C/ECC-1C/ICC-1C board.
+
+        If neither `port` nor `ip_address` is given, auto-discovery matches the USB
+        hardware id 0483:A31E (the ICC-4C's, same behavior as the vendor SDK). If your
+        board enumerates under a different id, pass `port=` explicitly.
 
         Raises
         ------

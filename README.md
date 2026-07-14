@@ -24,6 +24,10 @@ family via Optotune's vendored `optoICC` SDK (`IccLens`).
 - Python >= 3.8
 - [`uv`](https://docs.astral.sh/uv/)
 
+> Installation requires `uv`: the `optoicc`/`optokummenberg` dependencies are vendored wheels
+> under `wheels/`, resolved via `[tool.uv.sources]` in `pyproject.toml`. A plain
+> `pip install .` will fail because those packages are not on PyPI.
+
 ### Setting Up a Development Environment
 From the root of the project, create the virtual environment and install the
 package with its dev dependencies (`pytest`, etc.) from `uv.lock`:
