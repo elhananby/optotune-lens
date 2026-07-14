@@ -322,7 +322,7 @@ class Lens:
             raise LensValidationError(f"Upper temperature limit {upper} is out of bounds [-40.0, 85.0]")
 
         res = self.send_command(
-            b'PwTA' + struct.pack('>hh', int(upper * 16), int(lower * 16)), 
+            b'PwTA' + struct.pack('>hh', round(upper * 16), round(lower * 16)),
             '>xxBhh'
         )
         if res is None:
@@ -342,7 +342,7 @@ class Lens:
 
     def _diopter_to_raw(self, diopter: float) -> int:
         """Convert a diopter value to the raw firmware focal power encoding."""
-        return int((diopter + 5) * 200.0 if self.firmware_type == 'A' else diopter * 200.0)
+        return round((diopter + 5) * 200.0 if self.firmware_type == 'A' else diopter * 200.0)
 
     def get_current(self) -> float:
         """Read current applied current in mA."""
@@ -368,7 +368,7 @@ class Lens:
                 f"Current {current} mA is out of valid range [-{self.max_output_current}, {self.max_output_current}]"
             )
             
-        raw_current = int(current * 4095.0 / self.max_output_current)
+        raw_current = round(current * 4095.0 / self.max_output_current)
         self.send_command(b'Aw' + struct.pack('>h', raw_current))
 
     def get_diopter(self) -> float:

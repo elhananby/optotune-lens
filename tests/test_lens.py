@@ -301,6 +301,16 @@ def test_lens_drains_stray_bytes_before_next_command():
 
 
 @patch("serial.Serial", new=MockSerial)
+def test_lens_diopter_to_raw_rounds_instead_of_truncating():
+    """Test that raw conversion rounds to the nearest count. With int()
+    truncation, float representation error made e.g. (-4.995 + 5) * 200
+    (= 0.99999...) collapse to 0 instead of 1."""
+    with Lens("COM_MOCK") as lens:
+        assert lens.firmware_type == "A"
+        assert lens._diopter_to_raw(-4.995) == 1
+
+
+@patch("serial.Serial", new=MockSerial)
 def test_lens_get_firmware_branch():
     """Test firmware branch ID query."""
     with Lens("COM_MOCK") as lens:
