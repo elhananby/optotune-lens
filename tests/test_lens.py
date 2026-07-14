@@ -205,11 +205,8 @@ def test_lens_mode_switching_and_control():
         assert max_fp == 0.0
         assert lens.mode == OperatingMode.FOCAL_POWER
         
-        # Set diopter within limits (-6.0 <= diopter <= 0.0)
-        # Wait, in MockSerial we registry set diopter 3.0? No, let's update min_fp/max_fp range in tests.
-        # Let's adjust limits to test validation errors.
-        
-        # Let's change safety limits to 20 to 45
+        # Changing temperature limits updates min_diopter/max_diopter; use
+        # this to test that set_diopter validates against the new bounds.
         lens.set_temperature_limits(20.0, 45.0)
         
         # If we try to set diopter outside limit, raise validation error
