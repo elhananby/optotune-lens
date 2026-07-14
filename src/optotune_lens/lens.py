@@ -168,7 +168,7 @@ class Lens:
 
             if logger.isEnabledFor(logging.DEBUG):
                 rx_hex = ' '.join(f'{c:02x}' for c in response)
-                logger.debug("RX: %50s | %r", rx_hex, response)
+                logger.debug("RX: %-50s | %r", rx_hex, response)
 
             if len(response) < expected_len:
                 raise LensTimeoutError(
