@@ -28,6 +28,8 @@ classifiers = [
 ]
 dependencies = [
     "pyserial>=3.5",
+    "optoicc",
+    "optokummenberg",
 ]
 
 [project.optional-dependencies]
@@ -39,6 +41,10 @@ dev = [
 [tool.setuptools.packages.find]
 where = ["src"]
 include = ["optotune_lens*"]
+
+[tool.uv.sources]
+optoicc = { path = "wheels/optoicc-2.0.5256-py3-none-any.whl" }
+optokummenberg = { path = "wheels/optokummenberg-1.0.5256-py3-none-any.whl" }
 
 [tool.pytest.ini_options]
 minversion = "7.0"

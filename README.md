@@ -1,6 +1,8 @@
 # optotune-lens
 
-A robust, modern Python SDK for interacting with **Optotune electrically tunable lenses** over a serial (RS-232/USB COM port) interface.
+A robust, modern Python SDK for interacting with **Optotune electrically tunable lenses**: the
+Lens Driver 4/4i over its native serial protocol (`Lens`), and the ICC-4C/ECC-1C/ICC-1C controller
+family via Optotune's vendored `optoICC` SDK (`IccLens`).
 
 ---
 
@@ -102,9 +104,50 @@ Helper method to dump and pretty-print the EEPROM in a 16x16 hex grid.
 
 ---
 
+## ICC-4C / ECC-1C / ICC-1C Support (`IccLens`)
+
+Unlike the LD4/`Lens` class above, the ICC-4C, ECC-1C, and ICC-1C controllers are driven by
+Optotune's own vendored `optoICC`/`optoKummenberg` SDK (wheels vendored under `wheels/`, installed
+automatically via `uv sync`), rather than a hand-rolled protocol. `IccLens`/`IccChannel` wrap that
+SDK with the same ergonomics as `Lens` (context manager, `LensError` exceptions), and work
+identically regardless of which of the three board types is connected — the underlying SDK's
+`Board -> channel[] -> System` shape is the same across all of them.
+
+> **Hardware note**: as of this writing, only the Lens Driver 4 (`/dev/optotune_ld`) is physically
+> available for testing. `IccLens`'s test suite (`tests/test_icc.py`) uses a fake board object and
+> passes, but the real hardware code path (`IccLens.connect(...)`) has not been verified against
+> actual ICC-1C/ICC-4C/ECC-1C hardware.
+
+```python
+from optotune_lens import IccLens
+
+with IccLens.connect('icc1c', port='COM12') as lens:
+    print(f"Firmware version: {lens.firmware_version}")
+
+    channel = lens.channels[0]  # ICC-4C exposes lens.channels[0..3]
+    print(f"Lens serial number: {channel.serial_number}")
+    print(f"Temperature: {channel.get_temperature()} °C")
+
+    channel.set_diopter(3.0)      # switches to focal-power mode and sets it
+    channel.set_current(0.1)      # switches to current mode and sets it (amperes)
+
+    # Drive a waveform via the signal generator
+    channel.run_waveform(shape=0, frequency=5.0, amplitude=0.2)
+    channel.stop_waveform()
+
+    # Or configure an external analog voltage input with a linear LUT mapping
+    channel.configure_analog_input(voltage_range=[0, 10], value_range=[-2, 3], unit='focal_power')
+```
+
+`controller` in `IccLens.connect(controller, ...)` is one of `'icc4c'`, `'ecc1c'`, or `'icc1c'`. See
+`examples/icc1c_example.py` for a full walkthrough (requires real hardware to run).
+
+---
+
 ## Development and Testing
 
-Unit tests are written with `pytest` and use a mock serial implementation.
+Unit tests are written with `pytest`. `Lens` tests use a mock serial implementation;
+`IccLens` tests use a fake `optoICC` board object (see "Hardware note" above).
 
 ### Running Tests
 ```bash

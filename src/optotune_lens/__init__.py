@@ -13,12 +13,16 @@ from .exceptions import (
     LensValidationError,
 )
 from .lens import Lens, OperatingMode, FirmwareVersion
+from .icc import IccLens, IccChannel, IccControllerType
 from .utils import crc_16
 
 __all__ = [
     "Lens",
     "OperatingMode",
     "FirmwareVersion",
+    "IccLens",
+    "IccChannel",
+    "IccControllerType",
     "LensError",
     "LensConnectionError",
     "LensTimeoutError",
