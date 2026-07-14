@@ -52,7 +52,12 @@ class Lens:
             debug: If True, log detailed TX/RX hex dumps to stdout.
             
         Raises:
-            LensConnectionError: If connection or handshake fails.
+            LensError: If the serial connection, handshake, or any of the
+                initial hardware queries fail. Low-level errors (e.g. a
+                bad port) are wrapped as LensConnectionError; failures
+                from the hardware queries themselves propagate as their
+                own LensError subclass (LensCommandError, LensCRCError,
+                LensTimeoutError).
         """
         self.debug = debug
         if debug:
