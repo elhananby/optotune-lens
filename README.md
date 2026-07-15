@@ -1,6 +1,6 @@
 # optotune-lens
 
-A robust, modern Python SDK for interacting with **Optotune electrically tunable lenses** over a serial (RS-232/USB COM port) interface.
+A robust, modern Python SDK for interacting with **Optotune electrically tunable lenses** over a serial (RS-232/USB COM port) interface. Supports both the **Lens Driver 4** (`Lens`) and the **ICC-1C** industrial controller (`ICC1C`).
 
 ---
 
@@ -10,8 +10,8 @@ A robust, modern Python SDK for interacting with **Optotune electrically tunable
 - **Robust Exception Hierarchy**: Specialized exceptions (`LensConnectionError`, `LensCRCError`, `LensTimeoutError`, etc.) replace generic Python `Exception`s.
 - **Input Validation**: Safeguard hardware with diopter and current bounds checking prior to sending commands.
 - **Logging Integration**: Uses Python's standard `logging` library instead of verbose print flags.
-- **CRC-16 Modbus Verification**: Automatic checksum computation and verification on all TX/RX commands.
-- **EEPROM Access**: Methods to read, write, and display the internal 256-byte EEPROM.
+- **Lens Driver 4** (`Lens`): binary protocol with CRC-16 Modbus verification on all TX/RX commands, plus EEPROM read/write/dump access.
+- **ICC-1C** (`ICC1C`): ASCII "Simple Mode" protocol; the controller does its own raw-current↔diopter conversion from the lens's onboard calibration.
 - **Modern Packaging**: Conforms to modern PEP 517/518 build standards using `pyproject.toml`.
 
 ---
@@ -67,6 +67,24 @@ with Lens(port='COM7') as lens:
     lens.set_current(100.0)  # set target current in mA
 ```
 
+### ICC-1C Controller
+
+```python
+from optotune_lens import ICC1C
+
+with ICC1C(port='COM7') as icc:
+    print(f"Connected to: {icc.device_type} (Serial: {icc.device_serial})")
+    print(f"Temperature: {icc.get_temperature()} °C")
+
+    # Focal power mode — no explicit mode switch needed, SETFP is
+    # always available; this just validates the lens has calibration data.
+    icc.to_focal_power_mode()
+    icc.set_diopter(3.0)  # raises LensValidationError if outside the lens's range
+
+    # Current mode — SETCURRENT is independent of SETFP, no mode switch needed.
+    icc.set_current(100.0)  # mA
+```
+
 ---
 
 ## API Documentation
@@ -99,6 +117,31 @@ Dumps the complete 256-byte internal EEPROM contents.
 
 #### `eeprom_print()`
 Helper method to dump and pretty-print the EEPROM in a 16x16 hex grid.
+
+### Class: `ICC1C`
+
+#### `__init__(port: str, baudrate: int = 115200, debug: bool = False)`
+Opens the serial connection, performs the `START` handshake, and confirms a lens is detected via `DETECTDEVICE`. The ICC-1C auto-detects baud rate, so `baudrate` is arbitrary.
+
+#### `to_focal_power_mode()`
+Validates the connected lens has focal power calibration data (`GETFPMIN` not `NO`). Simple Mode has no real mode-switch command — `SETFP`/`SETCURRENT` are independent and always available.
+
+#### `to_current_mode()`
+No-op compatibility shim; `SETCURRENT` is always available.
+
+#### `set_diopter(diopter: float)` / `get_diopter() -> Optional[float]`
+Sets/reads the target focal power in diopters. The device converts to/from raw current using the lens's own EEPROM calibration.
+
+#### `set_current(current_mA: float)` / `get_current() -> float`
+Sets/reads the target current in mA.
+
+#### `get_temperature() -> float`
+Reads the connected device's temperature sensor.
+
+#### `set_temperature_limit(limit: float)`
+Sets the operational temperature limit in Celsius.
+
+**Note:** Pro Mode features (Smart Step, the signal generator, vectors) are not covered by this class — they're binary register-protocol only and are configured once via Optotune Cockpit, then persisted on the device across power cycles.
 
 ---
 

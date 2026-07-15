@@ -13,12 +13,14 @@ from .exceptions import (
     LensValidationError,
 )
 from .lens import Lens, OperatingMode, FirmwareVersion
+from .icc1c import ICC1C
 from .utils import crc_16
 
 __all__ = [
     "Lens",
     "OperatingMode",
     "FirmwareVersion",
+    "ICC1C",
     "LensError",
     "LensConnectionError",
     "LensTimeoutError",
